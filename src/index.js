@@ -38,7 +38,10 @@ lib.connect = (endpoint, cb) => {
   }
 
   const client = rpc.Client.$create(connectPort, connectHost, user, pass)
-  //client.host = endpoint
+  if (endpointData.protocol === 'wss:' || endpointData.protocol === 'https:') {
+    console.log('wss://' + client.host + ':443' + endpointData.path)
+  }
+  client.host = endpointData.href
 
   client.connectWebsocket((err, result) => {
     if (err) {

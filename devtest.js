@@ -15,7 +15,7 @@ ztaklib.setNetwork({
   "wif": 149
 })
 
-ztaklib.connect('ws://localhost:3041', async () => {
+ztaklib.connect('wss://hazamaapi.indiesquare.net:443/ztak', async () => {
   console.log('Websocket connected')
   let wallet = ztaklib.createWallet()
   console.log(wallet)
