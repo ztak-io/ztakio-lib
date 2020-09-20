@@ -8,6 +8,8 @@ const bitcoin = require('bitcoinjs-lib')
 const lib = new EventEmitter()
 let currentClient
 let currentConnection
+let generalServerInfo
+let ztakNetworkSetupManually = false
 
 lib.connect = (endpoint, cb) => {
   let endpointData = url.parse(endpoint)
@@ -43,7 +45,7 @@ lib.connect = (endpoint, cb) => {
   }
   client.host = endpointData.href
 
-  client.connectWebsocket((err, result) => {
+  client.connectWebsocket(async (err, result) => {
     if (err) {
       throw err
     } else if (!result) {
@@ -53,6 +55,15 @@ lib.connect = (endpoint, cb) => {
       currentConnection.callAsync = promisify(currentConnection.call)
       currentClient = client
 
+      let info = await currentConnection.callAsync('core.info', [])
+      if (info.network) {
+        generalServerInfo = info
+        ztak.networks.mainnet = info.network
+        if (ztakNetworkSetupManually) {
+          setNetworkDeprecationNotice()
+        }
+      }
+
       if (cb) {
         cb()
       }
@@ -61,8 +72,17 @@ lib.connect = (endpoint, cb) => {
   })
 }
 
+function setNetworkDeprecationNotice() {
+  console.log('Deprecation notice: ztaklib.setNetwork() isn\'t necessary on this server instance')
+}
+
 lib.setNetwork = (network) => {
-  ztak.networks.mainnet = network
+  if (generalServerInfo) {
+    setNetworkDeprecationNotice()
+  } else {
+    ztakNetworkSetupManually = true
+    ztak.networks.mainnet = network
+  }
 }
 
 lib.compile = (code) => {
@@ -106,6 +126,23 @@ lib.createWallet = () => {
   const { address } = bitcoin.payments.p2pkh({ pubkey: ecpair.publicKey, network: network })
 
   return { address, wif: ecpair.toWIF(), ecpair }
+}
+
+lib.decodeCall = (envelope) => {
+  let msg = ztak.openEnvelope(Buffer.from(envelope, 'hex'))
+  let lines = ztak.asm.unpack(msg.data).filter(x => x.opName !== 'NOOP' && x.opName !== 'END' && x.opName !== 'REQUIRE')
+  let calls = []
+  let params = []
+  for (let i=0; i < lines.length; i++) {
+    let item = lines[i]
+    if (item.opName.startsWith('PUSH')) {
+      params.push(item.params[0])
+    } else if (item.opName === 'ECALL') {
+      calls.push({ [item.params[0]]: params })
+      params = []
+    }
+  }
+  return {from: msg.from, calls}
 }
 
 module.exports = lib
