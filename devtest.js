@@ -11,6 +11,8 @@ function rid() {
   return '' + id
 }
 
+const sleep = (n) => new Promise(resolve => setTimeout(resolve, n))
+
 //ztaklib.connect('wss://hazamaapi.indiesquare.net:443/ztak', async () => {
 ztaklib.connect('ws://localhost:3041', async () => {
   console.log('Websocket connected')
@@ -18,21 +20,52 @@ ztaklib.connect('ws://localhost:3041', async () => {
 
   const exec = async (template, data) => {
     let code = await ztaklib.template(template, data)
-    console.log(code)
     let tx = ztaklib.envelope(ztaklib.compile(code), wif)
     return ztaklib.tx(tx)
   }
   const nft_collection = '/hazama/nft' + rid()
+  const ft_path = '/hazama/ft' + rid()
 
-  await exec('fungible_token', { // Get a template to send an NFT
-    path: nft_collection,
+  /*await exec('fungible_token', { // Get a template to send an NFT
+    path: ft_path,
     decimals: 2,
-    name: 'Nft collection',
+    name: 'ft',
     tokenVersion: '1.0.0',
     author: sourceAddress
   })
+  await ztaklib.waitBlock()
 
-  /*await exec('nft_history_drop_price', { // Get a template to send an NFT
+  const fungibleIssue = (n) => {
+    return exec('fungible_token_issuance', { // Get a template to issue a FT
+      path: ft_path,
+      amount: n
+    })
+  }
+
+  const fungibleSend = (dest, n) => {
+    return exec('fungible_token_send', { // Get a template to send an NFT
+      path: ft_path,
+      amount: n,
+      destination: dest
+    })
+  }
+
+  await fungibleIssue(10000)
+  await ztaklib.waitBlock()
+  console.log(sourceAddress, await ztaklib.get(`${ft_path}/${sourceAddress}`))
+
+  let destAddress = 'haBqcDvxe2bx64jW23hkj4vfJsfjUkjNEw'
+  await fungibleSend(destAddress, 5000)
+  await ztaklib.waitBlock()
+  await sleep(1000)
+
+  console.log(sourceAddress, await ztaklib.get(`${ft_path}/${sourceAddress}`))
+  console.log(destAddress, await ztaklib.get(`${ft_path}/${destAddress}`))
+
+  console.log(sourceAddress, await ztaklib.get(`/_/addr.${sourceAddress}`))*/
+
+
+  await exec('nft_history_drop_price', { // Get a template to send an NFT
     path: nft_collection,
     name: 'Nft collection',
     tokenVersion: '1.0.0',
@@ -51,7 +84,7 @@ ztaklib.connect('ws://localhost:3041', async () => {
 
   let names = []
 
-  for (let i=0; i < 1000; i++) {
+  for (let i=0; i < 50; i++) {
     names.push('ticket'  + rid())
   }
   let txs = await Promise.all(names.map(x => issue(x)))
@@ -68,6 +101,6 @@ ztaklib.connect('ws://localhost:3041', async () => {
     } else {
       console.log(`*** ${txid} not found!!! ${names[i]}`)
     }
-  }*/
+  }
 
 })

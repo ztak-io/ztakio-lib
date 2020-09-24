@@ -178,12 +178,13 @@ lib.decodeCall = (envelope) => {
 }
 
 lib.waitBlock = () => new Promise((resolve) => {
-  lib.once('new block', resolve)
+  lib.once('new block', () => {
+    setTimeout(resolve, 10) // Needs a tiny bit of wait
+  })
 })
 
 lib.waitTx = (txid) => new Promise((resolve) => {
   let watcher = (k) => {
-    console.log('-->', k)
     if (k.indexOf(txid) >= 0) {
       resolve(k)
     }
