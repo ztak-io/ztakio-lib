@@ -68,6 +68,18 @@ lib.connect = (endpoint, cb) => {
         cb()
       }
       lib.emit('connected')
+
+      lib.watch('\\/_\\/block\\..*', (k) => {
+        lib.emit('new block', k)
+      })
+
+      lib.watch('\\/_\\/tx\\..*', (k) => {
+        lib.emit('new tx', k)
+      })
+
+      currentClient.expose('event', ([key]) => {
+        lib.emit('_raw_event', key)
+      })
     }
   })
 }
@@ -114,14 +126,34 @@ lib.tx = (data) => {
   return currentConnection.callAsync('core.tx', [data])
 }
 
+lib.block = (data) => {
+  if (Buffer.isBuffer(data)) {
+    data = data.toString('hex')
+  }
+
+  return currentConnection.callAsync('core.block', [data])
+}
+
 lib.watch = (regex, handler) => {
-  currentClient.expose('event', ([key]) => {
-    console.log('Try match', regex, key)
+  const r = new RegExp(regex)
+  lib.on('_raw_event', (key) => {
+    if (r.test(key)) {
+      handler(key)
+    }
   })
+  currentConnection.callAsync('core.subscribe', [regex])
 }
 
 lib.createWallet = () => {
   const ecpair = bitcoin.ECPair.makeRandom()
+  let network = ztak.networks.mainnet
+  const { address } = bitcoin.payments.p2pkh({ pubkey: ecpair.publicKey, network: network })
+
+  return { address, wif: ecpair.toWIF(), ecpair }
+}
+
+lib.walletFromWif = (wif) => {
+  const ecpair = bitcoin.ECPair.fromWIF(wif)
   let network = ztak.networks.mainnet
   const { address } = bitcoin.payments.p2pkh({ pubkey: ecpair.publicKey, network: network })
 
@@ -144,5 +176,20 @@ lib.decodeCall = (envelope) => {
   }
   return {from: msg.from, calls}
 }
+
+lib.waitBlock = () => new Promise((resolve) => {
+  lib.once('new block', resolve)
+})
+
+lib.waitTx = (txid) => new Promise((resolve) => {
+  let watcher = (k) => {
+    console.log('-->', k)
+    if (k.indexOf(txid) >= 0) {
+      resolve(k)
+    }
+    lib.removeListener('new tx', watcher)
+  }
+  lib.on('new tx', watcher)
+})
 
 module.exports = lib

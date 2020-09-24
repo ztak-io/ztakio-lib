@@ -2,38 +2,72 @@ const ztaklib = require('./src/')
 const fs = require('fs')
 const util = require('util')
 
-//const wif = fs.readFileSync('.wif', 'utf8').trim()
+//const testblock = fs.readFileSync('testblock.hex', 'utf8')
+const hazwif = fs.readFileSync('../hazama_federation_root_wif', 'utf8').trim()
 
-/*ztaklib.setNetwork({
-  "messagePrefix": "\u0018Hazama Signed Message:\n",
-  "bech32": "haz",
-  "bip32": {
-    "public": "0x0488b21e",
-    "private": "0x0488ade4"
-  },
-  "H_pubKeyHash": 41,
-  "pubKeyHash": 100,
-  "wif": 149
-})*/
+let id = Math.floor(Math.random() * 0xFFFFFF)
+function rid() {
+  id += 1
+  return '' + id
+}
 
 //ztaklib.connect('wss://hazamaapi.indiesquare.net:443/ztak', async () => {
 ztaklib.connect('ws://localhost:3041', async () => {
   console.log('Websocket connected')
-  /*let wallet = ztaklib.createWallet()
-  console.log(wallet)*/
-  ztaklib.watch('.*', console.log)
+  let { address: sourceAddress, wif, ecpair } = ztaklib.walletFromWif(hazwif)
 
-  /*let tx = await ztaklib.get('/_/tx.6fd972a594fde6af5191f928d7c655e4be13f5d076ed50308386b32ec08acb09')
-  console.log(util.inspect(ztaklib.decodeCall(tx), {depth: 4, colors: true}))*/
+  const exec = async (template, data) => {
+    let code = await ztaklib.template(template, data)
+    console.log(code)
+    let tx = ztaklib.envelope(ztaklib.compile(code), wif)
+    return ztaklib.tx(tx)
+  }
+  const nft_collection = '/hazama/nft' + rid()
 
-  /*let code = await ztaklib.template('nft_send', {path: '/hazama/nft', name: 'test1', destination: 'hQbbZu7i54bXiu4rhdngBUmQB8xbDK6hEc'})
-  let compiled = ztaklib.compile(code)
-  let envelope = ztaklib.envelope(compiled, wif)
+  await exec('fungible_token', { // Get a template to send an NFT
+    path: nft_collection,
+    decimals: 2,
+    name: 'Nft collection',
+    tokenVersion: '1.0.0',
+    author: sourceAddress
+  })
 
-  try {
-    let conf = await ztaklib.tx(envelope)
-    console.log(conf)
-  } catch(e) {
-    console.log(e)
+  /*await exec('nft_history_drop_price', { // Get a template to send an NFT
+    path: nft_collection,
+    name: 'Nft collection',
+    tokenVersion: '1.0.0',
+    author: sourceAddress
+  })
+
+  let bid = await ztaklib.waitBlock()
+  console.log('New block', bid)
+
+  const issue = (name) => {
+    return exec('nft_issuance', {
+      path: nft_collection,
+      name, price: 100
+    })
+  }
+
+  let names = []
+
+  for (let i=0; i < 1000; i++) {
+    names.push('ticket'  + rid())
+  }
+  let txs = await Promise.all(names.map(x => issue(x)))
+  console.log(txs)
+  //await Promise.all(txs.map(x => ztaklib.waitTx(x)))
+  await ztaklib.waitBlock()
+
+  for (let i=0; i < txs.length; i++) {
+    let txid = txs[i]
+    let fed = await ztaklib.get(`/_/tx.${txid}.feds`)
+
+    if (fed) {
+      console.log(txid, fed['/hazama'].length > 0, names[i])
+    } else {
+      console.log(`*** ${txid} not found!!! ${names[i]}`)
+    }
   }*/
+
 })
