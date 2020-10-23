@@ -118,6 +118,25 @@ lib.get = (key) => {
   return currentConnection.callAsync('core.get', [key])
 }
 
+lib.iterate = async (options, amount) => {
+  let iterId = await currentConnection.callAsync('core.inititerator', [options])
+  let finished = false
+  let next = async () => {
+    if (finished) {
+      return null
+    } else {
+      let results = await currentConnection.callAsync('core.fetchiterator', [iterId, amount])
+      if (!results/*.length < amount*/) {
+        finished = true
+      }
+
+      return results
+    }
+  }
+
+  return next
+}
+
 lib.tx = (data) => {
   if (Buffer.isBuffer(data)) {
     data = data.toString('hex')
@@ -192,5 +211,9 @@ lib.waitTx = (txid) => new Promise((resolve) => {
   }
   lib.on('new tx', watcher)
 })
+
+lib.disconnect = () => {
+  currentConnection.end()
+}
 
 module.exports = lib
