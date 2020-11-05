@@ -80,6 +80,15 @@ lib.connect = (endpoint, cb) => {
       currentClient.expose('event', ([key]) => {
         lib.emit('_raw_event', key)
       })
+
+      currentClient.expose('verifyevent', ([msg]) => {
+        lib.emit('_verify_event', msg)
+      })
+
+      /*currentClient.expose('verifyevent', ([msg]) => {
+        console.log('Got verify event')
+        lib.emit('_verify_event', msg)
+      })*/
     }
   })
 }
@@ -161,6 +170,13 @@ lib.watch = (regex, handler) => {
     }
   })
   currentConnection.callAsync('core.subscribe', [regex])
+}
+
+lib.verifyEvents = (handler) => {
+  lib.on('_verify_event', (msg) => {
+    handler(msg)
+  })
+  currentConnection.callAsync('core.verifyevents', [])
 }
 
 lib.createWallet = () => {
