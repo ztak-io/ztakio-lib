@@ -134,12 +134,19 @@ lib.iterate = async (options, amount) => {
     if (finished) {
       return null
     } else {
-      let results = await currentConnection.callAsync('core.fetchiterator', [iterId, amount])
-      if (!results/*.length < amount*/) {
-        finished = true
-      }
+      let response = await currentConnection.callAsync('core.fetchiterator', [iterId, amount])
+      if (response) {
+        let { hadValues, res: results } = response
 
-      return results
+        if (!hadValues) { //(!results/*.length < amount*/) {
+          finished = true
+        }
+
+        return results
+      } else {
+        finished = true
+        return null
+      }
     }
   }
 
