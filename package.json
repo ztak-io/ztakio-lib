@@ -15,7 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "json-rpc2": "^2.0.0",
-    "ztakio-core": "0.0.25"
+    "ztakio-core": "0.0.26"
   },
   "devDependencies": {
     "chalk": "^4.1.0",
