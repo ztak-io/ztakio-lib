@@ -11,6 +11,10 @@ let currentConnection
 let generalServerInfo
 let ztakNetworkSetupManually = false
 
+function isAbiCompatible(abi, entrypoints) {
+  return abi.reduce((p, x) => p && (x in entrypoints), true)
+}
+
 lib.connect = (endpoint, cb) => {
   let endpointData = url.parse(endpoint)
 
@@ -237,6 +241,30 @@ lib.waitTx = (txid) => new Promise((resolve) => {
 
 lib.disconnect = () => {
   currentConnection.end()
+}
+
+lib.searchContractsByAbi = async (path, abi) => {
+  let ret = []
+  let replacedPath = path.replace(/\//g, '\\/')
+  let matcher = '^' + replacedPath + '[a-zA-Z]+\\.meta$'
+  let iter = await lib.iterate({ gt: path, match: matcher }, 10)
+  let chunk = await iter()
+  while (chunk !== null) {
+    for (let i=0; i < chunk.length; i++) {
+      const {key, value} = chunk[i]
+      const entrypointsKey = key.replace('.meta', '.entrypoints')
+      const contractKey = key.replace('.meta', '')
+      let entrypoints = await lib.get(entrypointsKey)
+
+      if (isAbiCompatible(abi, entrypoints)) {
+        ret.push([contractKey, value])
+      }
+    }
+
+    chunk = await iter()
+  }
+
+  return ret
 }
 
 module.exports = lib
