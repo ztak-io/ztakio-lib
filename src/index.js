@@ -239,6 +239,37 @@ lib.waitTx = (txid) => new Promise((resolve) => {
   lib.on('new tx', watcher)
 })
 
+lib.waitMinedTx = (txid) => new Promise(async (resolve) => {
+  let blockWatcher = async () => {
+    let res = await lib.get(`/_/tx.${txid}.feds`)
+
+    if (res) {
+      let mined = Object.entries(res)
+        .map(([k, v]) => v !== null && v.length > 0) // Check if it's mined by this each fed
+        .reduce((p, x) => p && x, true) // All feds should be true to get it mined
+
+      if (mined) {
+        lib.removeListener('new block', blockWatcher)
+        resolve(txid)
+      }
+    }
+  }
+
+  let watcher = (k) => {
+    if (k.indexOf(txid) >= 0) {
+      lib.on('new block', blockWatcher)
+      blockWatcher()
+    }
+    lib.removeListener('new tx', watcher)
+  }
+  lib.on('new tx', watcher)
+
+  let alreadyThere = await lib.get(`/_/tx.${txid}`)
+  if (alreadyThere !== null) {
+    await watcher(`/_/tx.${txid}`)
+  }
+})
+
 lib.disconnect = () => {
   currentConnection.end()
 }
